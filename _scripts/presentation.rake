@@ -1,4 +1,4 @@
-
+#pathname,pythonconfig,yaml kitaplıklarını tanımladı
 require 'pathname'
 require 'pythonconfig'
 require 'yaml'
@@ -11,6 +11,7 @@ INDEX_FILE = File.join(PRESENTATION_DIR, 'index.html')
 IMAGE_GEOMETRY = [ 733, 550 ]
 DEPEND_KEYS    = %w(source css js)
 DEPEND_ALWAYS  = %w(media)
+#Görevlerin tanımlanması
 TASKS = {
     :index   => 'sunumları indeksle',
     :build   => 'sunumları oluştur',
@@ -35,18 +36,18 @@ class File
       [path]
   end
 end
-
+#Png dosyalarını commentlemek için gerekli fonksiyon
 def png_comment(file, string)
-  require 'chunky_png'
+  require 'chunky_png'# ilgili kitaplıkları çağırdı
   require 'oily_png'
 
-  image = ChunkyPNG::Image.from_file(file)
-  image.metadata['Comment'] = 'raked'
-  image.save(file)
+  image = ChunkyPNG::Image.from_file(file) #dosyayı ChunkyPNG ile aç
+  image.metadata['Comment'] = 'raked' #metadata daki comment e raked i ata
+  image.save(file) # yapılan değişiklikleri dosyaya kaydet
 end
-
+#Png optimizasyonu için fonksiyon
 def png_optim(file, threshold=40000)
-  return if File.new(file).size < threshold
+  return if File.new(file).size < threshold #resim boyutu argüman olarak verilen boyuttan küçük ise geri döndür
   sh "pngnq -f -e .png-nq #{file}"
   out = "#{file}-nq"
   if File.exist?(out)
@@ -54,73 +55,76 @@ def png_optim(file, threshold=40000)
   end
   png_comment(file, 'raked')
 end
-
+#Jpg uzantılı resimleri optimize etmeye yarayan fonksiyon
 def jpg_optim(file)
-  sh "jpegoptim -q -m80 #{file}"
-  sh "mogrify -comment 'raked' #{file}"
+  sh "jpegoptim -q -m80 #{file}" #resmi optimize etti
+  sh "mogrify -comment 'raked' #{file}" #yapılan optimizasyonu commentledi
 end
 
 def optim
-  pngs, jpgs = FileList["**/*.png"], FileList["**/*.jpg", "**/*.jpeg"]
+  pngs, jpgs = FileList["**/*.png"], FileList["**/*.jpg", "**/*.jpeg"] #png ve jpg dosyalarını sırasıyla pngs ve jpgs
+                                                                       #dosyalarına attı,listeledi.
 
   [pngs, jpgs].each do |a|
     a.reject! { |f| %x{identify -format '%c' #{f}} =~ /[Rr]aked/ }
   end
 
-  (pngs + jpgs).each do |f|
+  (pngs + jpgs).each do |f| #pngs ve jpgs dosyalarını birleştirdi ve f olarak adlandırdı.Sonrasında dosya üzerinde f ismi
+                            #ile işlem yapılacak
     w, h = %x{identify -format '%[fx:w] %[fx:h]' #{f}}.split.map { |e| e.to_i }
     size, i = [w, h].each_with_index.max
-    if size > IMAGE_GEOMETRY[i]
+    if size > IMAGE_GEOMETRY[i] # resmin boyutu default değerden büyükse tekrar ölçekleyerek küçült
       arg = (i > 0 ? 'x' : '') + IMAGE_GEOMETRY[i].to_s
       sh "mogrify -resize #{arg} #{f}"
     end
   end
 
-  pngs.each { |f| png_optim(f) }
+  pngs.each { |f| png_optim(f) } #pngs ve jpgs dosyalarını optimize etti
   jpgs.each { |f| jpg_optim(f) }
 
   (pngs + jpgs).each do |f|
-    name = File.basename f
+    name = File.basename f 
     FileList["*/*.md"].each do |src|
       sh "grep -q '(.*#{name})' #{src} && touch #{src}"
     end
   end
 end
 
-default_conffile = File.expand_path(DEFAULT_CONFFILE)
+default_conffile = File.expand_path(DEFAULT_CONFFILE) #DEFAULT_CONFFILE dosyasının yolunu değişkene attı
 
-FileList[File.join(PRESENTATION_DIR, "[^_.]*")].each do |dir|
-  next unless File.directory?(dir)
-  chdir dir do
+FileList[File.join(PRESENTATION_DIR, "[^_.]*")].each do |dir| #dizinde nokta ile başlamayan dosyalar için
+  next unless File.directory?(dir) #dosya dizin değilse
+  chdir dir do #dizine girdi
     name = File.basename(dir)
     conffile = File.exists?('presentation.cfg') ? 'presentation.cfg' : default_conffile
     config = File.open(conffile, "r") do |f|
       PythonConfig::ConfigParser.new(f)
     end
 
-    landslide = config['landslide']
-    if ! landslide
+    landslide = config['landslide'] #config den lanslide bölümünü alıp lanslide isimli değişkene attı
+    #lanslide bölümü yoksa hata mesajı verdi ve çıktı
+    if ! landslide 
       $stderr.puts "#{dir}: 'landslide' bölümü tanımlanmamış"
       exit 1
     end
-
+    #lanslide bölümünde destination kullanılmışsa hedef dosya belirtilmemesi için mesaj verdi
     if landslide['destination']
       $stderr.puts "#{dir}: 'destination' ayarı kullanılmış; hedef dosya belirtilmeyin"
       exit 1
     end
 
-    if File.exists?('index.md')
+    if File.exists?('index.md') #index.md dosyası varsa dosya adını base değişkenine at
       base = 'index'
       ispublic = true
-    elsif File.exists?('presentation.md')
+    elsif File.exists?('presentation.md') #presantation.md dosyası varsa dosya adını base değişkenine at
       base = 'presentation'
       ispublic = false
-    else
+    else #dosyalardan hiçbiri yoksa hata mesajı ver
       $stderr.puts "#{dir}: sunum kaynağı 'presentation.md' veya 'index.md' olmalı"
       exit 1
     end
 
-    basename = base + '.html'
+    basename = base + '.html' #base e html uzantısı ekledi ve basename e attı
     thumbnail = File.to_herepath(base + '.png')
     target = File.to_herepath(basename)
 
@@ -129,11 +133,11 @@ FileList[File.join(PRESENTATION_DIR, "[^_.]*")].each do |dir|
       deps += v.split.select { |p| File.exists?(p) }.map { |p| File.to_filelist(p) }.flatten
     end
 
-    deps.map! { |e| File.to_herepath(e) }
-    deps.delete(target)
+    deps.map! { |e| File.to_herepath(e) } 
+    deps.delete(target) #deps.map yaptıktan sonra target ve thumbnail i sildi
     deps.delete(thumbnail)
 
-    tags = []
+    tags = [] #boş liste tanımladı
 
    presentation[dir] = {
       :basename  => basename,	# üreteceğimiz sunum dosyasının baz adı
@@ -149,7 +153,7 @@ FileList[File.join(PRESENTATION_DIR, "[^_.]*")].each do |dir|
   end
 end
 
-presentation.each do |k, v|
+presentation.each do |k, v| #presantation üzerinde gezerek burdaki bilgileri tanımlanmış olan boş listeye attı
   v[:tags].each do |t|
     tag[t] ||= []
     tag[t] << k
