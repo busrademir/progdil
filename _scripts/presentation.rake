@@ -96,8 +96,8 @@ FileList[File.join(PRESENTATION_DIR, "[^_.]*")].each do |dir| #dizinde nokta ile
   next unless File.directory?(dir) #dosya dizin değilse
   chdir dir do #dizine girdi
     name = File.basename(dir)
-    conffile = File.exists?('presentation.cfg') ? 'presentation.cfg' : default_conffile
-    config = File.open(conffile, "r") do |f|
+    conffile = File.exists?('presentation.cfg') ? 'presentation.cfg' : default_conffile #presantation.cfg dosyası varsa 
+    config = File.open(conffile, "r") do |f| #bu dosyayı,yoksa default_confile ı confile değişkenine attı
       PythonConfig::ConfigParser.new(f)
     end
 
@@ -162,8 +162,8 @@ end
 
 tasktab = Hash[*TASKS.map { |k, v| [k, { :desc => v, :tasks => [] }] }.flatten]
 
-presentation.each do |presentation, data|
-  ns = namespace presentation do
+presentation.each do |presentation, data| #presantation da gezindi ve dataları isimuzayına attı
+  ns = namespace presentation do #isimuzayı tanımlandı
     file data[:target] => data[:deps] do |t|
       chdir presentation do
         sh "landslide -i #{data[:conffile]}"
@@ -193,9 +193,9 @@ presentation.each do |presentation, data|
       end
     end
 
-    task :index => data[:thumbnail]
+    task :index => data[:thumbnail] # index görevini yerine getirdi
 
-    task :build => [:optim, data[:target], :index]
+    task :build => [:optim, data[:target], :index] #inşa görevini yerine getirdi
 
     task :view do
       if File.exists?(data[:target])
@@ -205,9 +205,9 @@ presentation.each do |presentation, data|
       end
     end
 
-    task :run => [:build, :view]
+    task :run => [:build, :view] # çalıştırma görevini yerine getirdi
 
-    task :clean do
+    task :clean do #silme işlemi- target ve thumbnail verilerini sildi
       rm_f data[:target]
       rm_f data[:thumbnail]
     end
@@ -222,14 +222,14 @@ presentation.each do |presentation, data|
   end
 end
 
-namespace :p do
+namespace :p do # p isimli isimuzayı oluşturuldu
   tasktab.each do |name, info|
     desc info[:desc]
     task name => info[:tasks]
     task name[0] => name
   end
 
-  task :build do
+  task :build do #build görevini yerine getirdi
     index = YAML.load_file(INDEX_FILE) || {}
     presentations = presentation.values.select { |v| v[:public] }.map { |v| v[:directory] }.sort
     unless index and presentations == index['presentations']
