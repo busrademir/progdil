@@ -242,7 +242,7 @@ namespace :p do # p isimli isimuzayı oluşturuldu
   end
 
   desc "sunum menüsü"
-  task :menu do
+  task :menu do #sunum menüsüde bulunan işlemleri yerine getirdi.
     lookup = Hash[
       *presentation.sort_by do |k, v|
         File.mtime(v[:directory])
